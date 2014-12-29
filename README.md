@@ -10,13 +10,16 @@ pfcontrol allows quick and easy development of monitoring. Encourages start/stop
 
 pfcontrol expects to run as a non privilged user "monitor". 
 
+```bash
 useradd -d /home/monitor monitor
 su - monitor
 mkdir -p {.cache,logs}
 /usr/lib/pfcontrol/bin/pfcontrol selftest
+```
 
 ##usage
 
+```bash
 $ /usr/lib/pfcontrol/bin/pfcontrol status
 DEFAULT_COMPONENT: running (pid 3548) 
 
@@ -24,4 +27,5 @@ $ /usr/lib/pfcontrol/bin/pfcontrol alerts
 component_bootstrap=0
 monitoring_bootstrap=0
 server_config_non_standard=0:0
+```
 
