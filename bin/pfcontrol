@@ -43,31 +43,6 @@ log() {
   echo "`date +%Y%m%d-%H:%M:%S` ($$) $*" >> $LOGFILE
 }
 
-#common init once function to determine if a game is deployed on this instance
-is_deployed() {
-if [[ -z "$DEPLOYED_GAMES" ]]; then
-  if [[ -d /home/jetty/local ]]; then
-    if [[ -f /home/jetty/local/DEV.properties ]]; then
-      DEPLOYED_GAMES=`grep -hPo "^deploy.games.list=.*$" /home/jetty/local/DEV.properties | cut -d "=" -f 2-`
-    fi
-
-    if [[ -z "$DEPLOYED_GAMES" ]]; then
-      DEPLOYED_GAMES=`grep -hPo "^deploy.games.list=.*$" /home/jetty/local/*.properties | cut -d "=" -f 2-`
-    fi
-  fi
-fi
-
-while IFS=',' read -ra GAME; do
-  for i in "${GAME[@]}"; do
-    if [[ "$i" == "$1" ]];then
-      return 0;
-    fi
-  done    
-done <<< "$DEPLOYED_GAMES"
-return 1
-}
-
-
 #common function to add an alert in a standard way.
 add_alert() {
   local name="$1"; local result="$2"; local comment="$3"
@@ -77,17 +52,10 @@ add_alert() {
     else
 	if [ -z "$comment" ]; then
 	  ALERTS="$ALERTS $name"="$result"
-        #  NAGIOS_PACKET="`hostname`\t${name}\t${result}\tNo Details\n"
         else
           ALERTS="$ALERTS $name"="$result":`echo $comment | tr " " "_" | cut -c -150`
-         # NAGIOS_PACKET="`hostname`\t${name}\t${result}\t${comment}\n"
         fi
     fi
-#    if [ -x /usr/sbin/send_nsca ]; then
-##	echo -e "sending $NAGIOS_PACKET"
-  #      echo -e "$NAGIOS_PACKET" | /usr/sbin/send_nsca -H live-mon-nag00m.internal.live.playfish.com
-#        echo $NAGIOS_PACKET | /usr/sbin/send_nsca -H live-mon-nag00s.internal.live.playfish.com
-   # fi
 }
 
 #We need to run some diagnostics to confirm everything is OK every now and again!. 
@@ -207,7 +175,8 @@ fi
 
 
 #if we're running the alerts we need to now add in any valid "monitors" to the SERVICELIST variable.
-#Some services, such as billing warrent their tests in a seperate file but are infact apps deployed within the "jetty" framework so have no start/stop methods, etc
+#monitors are lightweight components that can not be started for stopped. For example, if you run multiple sites using tomcat
+#you may have a single tomcat start/stop script but different monitors for each deployed app
 if [ "$COMMAND" = "alerts" ]; then
   for mon in `find $MONITORS -maxdepth 1 -type f ! -name '.*.swp'`; do
     mon_name=`basename $mon`
@@ -218,8 +187,6 @@ if [ "$COMMAND" = "alerts" ]; then
     fi
   done
 fi
-
-#TODO, move this up to above the components finder and add check afterwards to error if no monitors OR components have been found then server is "unknown" and no good to us
 
 SERVICES=
 if [ -z "$1" ]; then 
